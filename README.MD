@@ -3,6 +3,9 @@ This is a node-js wrapper with access to all of the Yunite API endpoints.
 
 Docs for official api: https://yunite.xyz/docs/developers/readme
 
+# Installation
+`npm install yunite`
+
 ## Code Example
 ```js
 const { YuniteApi } = require('yunite');
