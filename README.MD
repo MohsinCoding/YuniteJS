@@ -11,8 +11,8 @@ npm install yunite
 ## Code Example
 ```js
 const { YuniteApi } = require('yunite');
-const apiToken = 'Your-Api-Token'
-const client = new YuniteApi(apiToken)
+const apiToken = 'Your-Api-Token';
+const client = new YuniteApi(apiToken);
 
 // Gets linked users(s) from the specified guild
 client.getUserLinks('guildId', {
@@ -23,9 +23,9 @@ client.getUserLinks('guildId', {
     ]
 }).then(response => {
     // log response
-    console.log(response)
+    console.log(response);
 }).catch(err => {
     // log error
-    console.log(err)
+    console.log(err);
 })
 ```
