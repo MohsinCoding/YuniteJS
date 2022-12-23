@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@mohsincoding/yunite": "file:yuniteapi"
+  },
+  "version": "0.2.0"
+}
