@@ -1,0 +1,22 @@
+{
+  "name": "yunite",
+  "version": "1.4.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MohsinCoding/yunite_api.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MohsinCoding/yunite_api/issues"
+  },
+  "homepage": "https://github.com/MohsinCoding/yunite_api#readme",
+  "dependencies": {
+    "axios": "^1.2.1"
+  }
+}
