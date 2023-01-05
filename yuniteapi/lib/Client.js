@@ -21,6 +21,7 @@ class YuniteApi {
         const response = await axios.get(`${this.baseUrl}/app`, {
             headers: {
                 "Y-Api-Token": apiKey,
+                "Accept-Encoding": "gzip,deflate,compress"
             },
         })
         return response.data
@@ -32,7 +33,7 @@ class YuniteApi {
      */
     async deauthorize(guildId) {
         const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.post(`${this.baseUrl}/app/deauthorize?guildId=${guildId}`, {
+        const response = await axios.post(`${this.baseUrl}/app/deauthorize?guildId=${guildId}`, null, {
             headers: {
                 "Y-Api-Token": apiKey,
             },
@@ -79,6 +80,7 @@ class YuniteApi {
         const response = await axios.get(`${this.baseUrl}/guild/${guildId}/tournaments`, {
             headers: {
                 "Y-Api-Token": apiKey,
+                "Accept-Encoding": "gzip,deflate,compress"
             },
         })
         return response.data
@@ -199,6 +201,22 @@ class YuniteApi {
         }
         const apiKey = (Object.values(this.config).join(''))
         const response = await axios.get(`${this.baseUrl}/guild/${guildId}/acss/stats${from !== undefined ? `?from=${from}` : ''}${to !== undefined ? `?to=${to}` : ''}`, {
+            headers: {
+                "Y-Api-Token": apiKey,
+                "Accept-Encoding": "gzip,deflate,compress"
+            },
+
+        })
+        return response.data
+    }
+
+    /**
+    * Gets websocket token
+     * Docs: https://yunite.xyz/docs/developers/authentication
+     */
+    async getWsToken() {
+        const apiKey = (Object.values(this.config).join(''))
+        const response = await axios.get(`${this.baseUrl}/websocket-token`, {
             headers: {
                 "Y-Api-Token": apiKey,
                 "Accept-Encoding": "gzip,deflate,compress"

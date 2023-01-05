@@ -82,5 +82,10 @@ declare class YuniteApi {
         */
     getTicketStats(guildId: string, from: number, to: number): Promise<undefined>;
 
+    /**
+    * Gets websocket token
+    * Docs: https://yunite.xyz/docs/developers/authentication
+    */
+    getWsToken(): Promise<undefined>;
 }
 export default YuniteApi;
