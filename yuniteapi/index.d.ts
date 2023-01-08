@@ -1,1 +1,0 @@
-export { default as YuniteApi } from './lib/Client';
