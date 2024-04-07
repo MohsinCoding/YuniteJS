@@ -1,44 +1,46 @@
 import { UserLinksParams, BlockUserParams, AddTeamParams } from './Parameters';
+import { GetAppResponseData, Tournament, BlocKUserResponseData, GetUserLinksResponseData, GetTournamentsResponseData } from './Responses'
 
 declare class YuniteApi {
-    constructor(config: String)
+    constructor(config: String, beta: boolean)
+
     /**
      * Returns basic data about your application.
      * Docs: https://yunite.xyz/docs/developers/portal#:~:text=Get%20app%20data-,https%3A//yunite.xyz/api/v3/app
      */
-    getApp(): Promise<undefined>;
+    getApp(): Promise<GetAppResponseData>;
 
     /**
      * Deauthorizes your application from a guild.
      * Docs: https://yunite.xyz/docs/developers/portal#:~:text=https%3A//yunite.xyz/api/v3/app/deauthorize%3FguildId%3D%7BguildId%7D
      */
-    deauthorize(guildId: string): Promise<undefined>;
+    deauthorize(guildId: string): Promise<any>;
 
     /**
      * Returns which Discord user is linked to which Epic user or vice versa.
      * Docs: https://yunite.xyz/docs/developers/registrationdata
      * @param body Body for this endpoint
      */
-    getUserLinks(guildId: string, body: UserLinksParams): Promise<undefined>;
+    getUserLinks(guildId: string, body: UserLinksParams): Promise<GetUserLinksResponseData>;
 
     /**
      * Returns which Discord user is linked to which Epic user or vice versa.\n
      * Docs: https://yunite.xyz/docs/developers/blocks
      * @param body Body for this endpoint
      */
-    blockUser(guildId: string, body: BlockUserParams): Promise<undefined>;
+    blockUser(guildId: string, body: BlockUserParams): Promise<BlocKUserResponseData>;
 
     /**
      * Returns which Discord user is linked to which Epic user or vice versa.\n
      * Docs: https://yunite.xyz/docs/developers/blocks
      */
-    getTournaments(guildId: string): Promise<undefined>;
+    getTournaments(guildId: string): Promise<GetTournamentsResponseData>;
 
     /**
      * Gets a single tournament from the guild
      * Docs: https://yunite.xyz/docs/developers/tournaments#:~:text=Get%20single%20tournament-,https%3A//yunite.xyz/api/v3/guild/%7BguildId%7D/tournaments/%7BtournamentId%7D,-Request
      */
-    getSingleTournament(guildId: string, tournamentId: string): Promise<undefined>;
+    getSingleTournament(guildId: string, tournamentId: string): Promise<Tournament>;
 
     /**
      * Gets a single leaderboard of a tournament

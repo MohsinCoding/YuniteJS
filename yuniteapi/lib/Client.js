@@ -2,11 +2,17 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const axios = require('axios').default;
 class YuniteApi {
-    constructor(config) {
-        this.baseUrl = 'https://yunite.xyz/api/v3'
-        this.config = {
-            ...config,
-        };
+    constructor(config, beta) {
+        if (typeof beta === 'boolean' && beta === true) {
+            this.beta = beta;
+        }
+        if (this.beta === true) {
+            this.baseUrl = 'https://beta.yunite.xyz/api/v3'
+        }
+        else {
+            this.baseUrl = 'https://yunite.xyz/api/v3'
+        }
+        this.config = config;
         if (!config) {
             throw new Error("MUST PROVIDE API KEY")
         }
@@ -32,6 +38,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/portal#:~:text=https%3A//yunite.xyz/api/v3/app/deauthorize%3FguildId%3D%7BguildId%7D
      */
     async deauthorize(guildId) {
+        if (!guildId) throw new Error("REQUEST MUST CONTAIN GUILD ID")
         const apiKey = (Object.values(this.config).join(''))
         const response = await axios.post(`${this.baseUrl}/app/deauthorize?guildId=${guildId}`, null, {
             headers: {
@@ -137,7 +144,7 @@ class YuniteApi {
      */
     async getSingleLeaderboard(guildId, tournamentId, sessionId) {
         const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/guild/${guildId}/tournaments/${tournamentId}/matches/${sessionId}`, {
+        const response = await axios.get(`${this.baseUrl}/guild/${guildId}/tournaments/${tournamentId}/matches/${sessionId}?includeLive=true`, {
             headers: {
                 "Y-Api-Token": apiKey,
                 "Accept-Encoding": "gzip,deflate,compress"
