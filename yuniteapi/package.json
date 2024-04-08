@@ -1,6 +1,6 @@
 {
   "name": "yunite",
-  "version": "1.9.1",
+  "version": "2.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/MohsinCoding/yunite_api#readme",
   "dependencies": {
+    "@esm2cjs/p-queue": "^7.3.0",
     "axios": "^1.2.1"
   }
 }

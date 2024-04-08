@@ -1,36 +1,115 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const axios = require('axios').default;
+const PQueue = require('@esm2cjs/p-queue').default;
+
+class RateLimitManager {
+    constructor() {
+        this.queues = {};
+        this.permits = {};
+    }
+
+    ensureQueue(endpoint) {
+        if (!this.queues[endpoint]) {
+            this.queues[endpoint] = new PQueue({ concurrency: 1 });
+        }
+        return this.queues[endpoint];
+    }
+
+    async enqueue(endpoint, fn) {
+        const queue = this.ensureQueue(endpoint);
+        return queue.add(async () => {
+            if (this.permits[endpoint] <= 0) {
+                await new Promise(resolve => setTimeout(resolve, queue.timeout / 1000));
+            }
+            this.permits[endpoint]--;
+            return fn();
+        });
+    }
+
+    updateRateLimit(endpoint, resetIn) {
+        const queue = this.ensureQueue(endpoint);
+        queue.timeout = resetIn;
+        this.permits[endpoint] = 0;
+        setTimeout(() => {
+            this.permits[endpoint] = queue.concurrency;
+        }, resetIn);
+    }
+
+    updateConcurrency(endpoint, permits) {
+        const queue = this.ensureQueue(endpoint);
+        queue.concurrency = permits;
+        this.permits[endpoint] = permits;
+    }
+}
+
 class YuniteApi {
     constructor(config, beta) {
-        if (typeof beta === 'boolean' && beta === true) {
-            this.beta = beta;
-        }
-        if (this.beta === true) {
-            this.baseUrl = 'https://beta.yunite.xyz/api/v3'
-        }
-        else {
-            this.baseUrl = 'https://yunite.xyz/api/v3'
+        this.rateLimitManager = new RateLimitManager();
+        this.baseUrl = beta ? 'https://beta.yunite.xyz/api/v3' : 'https://yunite.xyz/api/v3';
+        if (!config) {
+            throw new Error("MUST PROVIDE API KEY");
         }
         this.config = config;
-        if (!config) {
-            throw new Error("MUST PROVIDE API KEY")
-        }
+        this.axiosInstance = axios.create();
+        this.setupInterceptors();
     }
+
+    setupInterceptors() {
+        this.axiosInstance.interceptors.response.use(response => {
+
+            const resetIn = parseInt(response.headers['y-ratelimit-resetin'], 10) * 1000;
+            const permits = parseInt(response.headers['y-ratelimit-permits'], 10);
+            console.log(response.headers)
+            const endpoint = this.extractEndpointFromURL(response.config.url);
+            this.rateLimitManager.updateRateLimit(endpoint, resetIn);
+            if (permits > 0) {
+                this.rateLimitManager.updateConcurrency(endpoint, permits);
+            }
+            return response;
+        }, async error => {
+
+            if (error.response && error.response.status === 429) {
+                const resetIn = parseInt(error.response.headers['y-ratelimit-resetin'], 10) * 1000;
+                await new Promise(resolve => setTimeout(resolve, resetIn / 1000));
+                const endpoint = this.extractEndpointFromURL(error.config.url);
+                this.rateLimitManager.updateRateLimit(endpoint, resetIn);
+                const originalRequestConfig = {
+                    ...error.config,
+                    headers: {
+                        ...error.config.headers,
+                    }
+                };
+                return this.axiosInstance(originalRequestConfig);
+            }
+            return Promise.reject(error);
+        });
+    }
+
+    extractEndpointFromURL(url) {
+        return url.replace(this.baseUrl, '');
+    }
+
+    async makeRequest(method, endpoint, options = {}, body = {}) {
+        const apiKey = Object.values(this.config).join('');
+        options.headers = {
+            ...options.headers,
+            "Y-Api-Token": apiKey,
+            "Accept-Encoding": "gzip,deflate,compress"
+        };
+
+        const fullUrl = `${this.baseUrl}${endpoint}`;
+        const fn = () => this.axiosInstance[method](fullUrl, method === "post" ? body : options, options);
+        return this.rateLimitManager.enqueue(endpoint, fn).catch(n => n);
+    }
+
 
     /**
      * Returns basic data about your application.
      * Docs: https://yunite.xyz/docs/developers/portal#:~:text=Get%20app%20data-,https%3A//yunite.xyz/api/v3/app
      */
-    async getApp() {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/app`, {
-            headers: {
-                "Y-Api-Token": apiKey,
-                "Accept-Encoding": "gzip,deflate,compress"
-            },
-        })
-        return response.data
+    async getApp(withGuildNames = false) {
+        return this.makeRequest('get', `/app?withGuildNames=${withGuildNames}`);
     }
 
     /**
@@ -39,13 +118,7 @@ class YuniteApi {
      */
     async deauthorize(guildId) {
         if (!guildId) throw new Error("REQUEST MUST CONTAIN GUILD ID")
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.post(`${this.baseUrl}/app/deauthorize?guildId=${guildId}`, null, {
-            headers: {
-                "Y-Api-Token": apiKey,
-            },
-        })
-        return response.data
+        return this.makeRequest('post', `/app/deauthorize?guildId=${guildId}`, {}, null);
     }
 
     /**
@@ -54,13 +127,7 @@ class YuniteApi {
      * @param body Body for this endpoint
      */
     async getUserLinks(guildId, body) {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.post(`${this.baseUrl}/guild/${guildId}/registration/links`, body, {
-            headers: {
-                "Y-Api-Token": apiKey,
-            },
-        })
-        return response.data
+        return this.makeRequest('post', `/guild/${guildId}/registration/links`, {}, body);
     }
 
     /**
@@ -69,13 +136,7 @@ class YuniteApi {
      * @param body Body for this endpoint
      */
     async blockUser(guildId, body) {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.post(`${this.baseUrl}/guild/${guildId}/registration/blocks`, body, {
-            headers: {
-                "Y-Api-Token": apiKey,
-            },
-        })
-        return response.data
+        return this.makeRequest('post', `/guild/${guildId}/registration/blocks`, {}, body);
     }
 
     /**
@@ -83,14 +144,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/tournaments#:~:text=list%20of%20tournaments-,https%3A//yunite.xyz/api/v3/guild/%7BguildId%7D/tournaments
      */
     async getTournaments(guildId) {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/guild/${guildId}/tournaments`, {
-            headers: {
-                "Y-Api-Token": apiKey,
-                "Accept-Encoding": "gzip,deflate,compress"
-            },
-        })
-        return response.data
+        return this.makeRequest('get', `/guild/${guildId}/tournaments`);
     }
 
     /**
@@ -98,14 +152,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/tournaments#:~:text=Get%20single%20tournament-,https%3A//yunite.xyz/api/v3/guild/%7BguildId%7D/tournaments/%7BtournamentId%7D
      */
     async getSingleTournament(guildId, tournamentId) {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/guild/${guildId}/tournaments/${tournamentId}`, {
-            headers: {
-                "Y-Api-Token": apiKey,
-                "Accept-Encoding": "gzip,deflate,compress"
-            },
-        })
-        return response.data
+        return this.makeRequest('get', `/guild/${guildId}/tournaments/${tournamentId}`);
     }
 
     /**
@@ -113,14 +160,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/tournaments#:~:text=https%3A//yunite.xyz/api/v3/guild/%7BguildId%7D/tournaments/%7BtournamentId%7D/leaderboard
      */
     async getLeaderboard(guildId, tournamentId) {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/guild/${guildId}/tournaments/${tournamentId}/leaderboard`, {
-            headers: {
-                "Y-Api-Token": apiKey,
-                "Accept-Encoding": "gzip,deflate,compress"
-            },
-        })
-        return response.data
+        return this.makeRequest('get', `/guild/${guildId}/tournaments/${tournamentId}/leaderboard`);
     }
 
     /**
@@ -128,14 +168,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/tournaments#:~:text=matches%20in%20tournament-,https%3A//yunite.xyz/api/v3/guild/%7BguildId%7D/tournaments/%7BtournamentId%7D/matches
      */
     async getMatches(guildId, tournamentId) {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/guild/${guildId}/tournaments/${tournamentId}/matches`, {
-            headers: {
-                "Y-Api-Token": apiKey,
-                "Accept-Encoding": "gzip,deflate,compress"
-            },
-        })
-        return response.data
+        return this.makeRequest('get', `/guild/${guildId}/tournaments/${tournamentId}/matches`);
     }
 
     /**
@@ -143,14 +176,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/tournaments#:~:text=https%3A//yunite.xyz/api/v3/guild/%7BguildId%7D/tournaments/%7BtournamentId%7D/matches/%7BsessionId%7D
      */
     async getSingleLeaderboard(guildId, tournamentId, sessionId) {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/guild/${guildId}/tournaments/${tournamentId}/matches/${sessionId}?includeLive=true`, {
-            headers: {
-                "Y-Api-Token": apiKey,
-                "Accept-Encoding": "gzip,deflate,compress"
-            },
-        })
-        return response.data
+        return this.makeRequest('get', `/guild/${guildId}/tournaments/${tournamentId}/matches/${sessionId}?includeLive=true`);
     }
 
     /**
@@ -158,14 +184,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/tournaments#:~:text=Get%20all%20teams-,https%3A//yunite.xyz/api/v3/guild/%7BguildId%7D/tournaments/%7BtournamentId%7D/teams
      */
     async getTeams(guildId, tournamentId) {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/guild/${guildId}/tournaments/${tournamentId}/teams`, {
-            headers: {
-                "Y-Api-Token": apiKey,
-                "Accept-Encoding": "gzip,deflate,compress"
-            },
-        })
-        return response.data
+        return this.makeRequest('get', `/guild/${guildId}/tournaments/${tournamentId}/teams`);
     }
 
     /**
@@ -173,6 +192,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/tournaments#:~:text=Get%20all%20teams-,https%3A//yunite.xyz/api/v3/guild/%7BguildId%7D/tournaments/%7BtournamentId%7D/teams
      */
     async addTeam(guildId, tournamentId, body) {
+
         const apiKey = (Object.values(this.config).join(''))
         const response = await axios.post(`${this.baseUrl}/guild/${guildId}/tournaments/${tournamentId}/teams`, body, {
             headers: {

@@ -1,3 +1,4 @@
+import { AxiosError, AxiosResponse } from 'axios';
 import { UserLinksParams, BlockUserParams, AddTeamParams } from './Parameters';
 import { GetAppResponseData, Tournament, BlocKUserResponseData, GetUserLinksResponseData, GetTournamentsResponseData } from './Responses'
 
@@ -8,20 +9,20 @@ declare class YuniteApi {
      * Returns basic data about your application.
      * Docs: https://yunite.xyz/docs/developers/portal#:~:text=Get%20app%20data-,https%3A//yunite.xyz/api/v3/app
      */
-    getApp(): Promise<GetAppResponseData>;
+    getApp(withGuildNames: boolean): Promise<GetAppResponseData>;
 
     /**
      * Deauthorizes your application from a guild.
      * Docs: https://yunite.xyz/docs/developers/portal#:~:text=https%3A//yunite.xyz/api/v3/app/deauthorize%3FguildId%3D%7BguildId%7D
      */
-    deauthorize(guildId: string): Promise<any>;
+    deauthorize(guildId: string): Promise<AxiosResponse | AxiosError>;
 
     /**
      * Returns which Discord user is linked to which Epic user or vice versa.
      * Docs: https://yunite.xyz/docs/developers/registrationdata
      * @param body Body for this endpoint
      */
-    getUserLinks(guildId: string, body: UserLinksParams): Promise<GetUserLinksResponseData>;
+    getUserLinks(guildId: string, body: UserLinksParams): Promise<GetUserLinksResponseData | AxiosError>;
 
     /**
      * Returns which Discord user is linked to which Epic user or vice versa.\n
