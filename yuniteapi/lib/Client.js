@@ -4,9 +4,10 @@ const axios = require('axios').default;
 const PQueue = require('@esm2cjs/p-queue').default;
 
 class RateLimitManager {
-    constructor() {
+    constructor(suppressLogs) {
         this.queues = {};
         this.permits = {};
+        this.suppressLogs = suppressLogs;
     }
 
     ensureQueue(endpoint) {
@@ -20,6 +21,9 @@ class RateLimitManager {
         const queue = this.ensureQueue(endpoint);
         return queue.add(async () => {
             if (this.permits[endpoint] <= 0) {
+                if (!this.suppressLogs) {
+                    console.log(`[YUNITEAPI]: Automatically queueing request to avoid rate limit. Waiting ${queue.timeout / 1000000} second(s)`);
+                }
                 await new Promise(resolve => setTimeout(resolve, queue.timeout / 1000));
             }
             this.permits[endpoint]--;
@@ -44,8 +48,8 @@ class RateLimitManager {
 }
 
 class YuniteApi {
-    constructor(config, beta) {
-        this.rateLimitManager = new RateLimitManager();
+    constructor(config, beta, suppressLogs = false) {
+
         this.baseUrl = beta ? 'https://beta.yunite.xyz/api/v3' : 'https://yunite.xyz/api/v3';
         if (!config) {
             throw new Error("MUST PROVIDE API KEY");
@@ -53,6 +57,8 @@ class YuniteApi {
         this.config = config;
         this.axiosInstance = axios.create();
         this.setupInterceptors();
+        this.suppressLogs = suppressLogs;
+        this.rateLimitManager = new RateLimitManager(suppressLogs);
     }
 
     setupInterceptors() {
@@ -60,7 +66,6 @@ class YuniteApi {
 
             const resetIn = parseInt(response.headers['y-ratelimit-resetin'], 10) * 1000;
             const permits = parseInt(response.headers['y-ratelimit-permits'], 10);
-            console.log(response.headers)
             const endpoint = this.extractEndpointFromURL(response.config.url);
             this.rateLimitManager.updateRateLimit(endpoint, resetIn);
             if (permits > 0) {
@@ -71,8 +76,11 @@ class YuniteApi {
 
             if (error.response && error.response.status === 429) {
                 const resetIn = parseInt(error.response.headers['y-ratelimit-resetin'], 10) * 1000;
-                await new Promise(resolve => setTimeout(resolve, resetIn / 1000));
                 const endpoint = this.extractEndpointFromURL(error.config.url);
+                if (!this.suppressLogs) {
+                    console.log(`[YUNITEAPI]: Ratelimit hit for endpoint: ${endpoint}, automatically retrying after ${resetIn/1000000} second(s)`);
+                }
+                await new Promise(resolve => setTimeout(resolve, resetIn / 1000));
                 this.rateLimitManager.updateRateLimit(endpoint, resetIn);
                 const originalRequestConfig = {
                     ...error.config,
@@ -98,9 +106,9 @@ class YuniteApi {
             "Accept-Encoding": "gzip,deflate,compress"
         };
 
-        const fullUrl = `${this.baseUrl}${endpoint}`;
+        const fullUrl = `${!endpoint.includes(this.baseUrl) ? this.baseUrl : ""}${endpoint}`;
         const fn = () => this.axiosInstance[method](fullUrl, method === "post" ? body : options, options);
-        return this.rateLimitManager.enqueue(endpoint, fn).catch(n => n);
+        return this.rateLimitManager.enqueue(endpoint, fn);
     }
 
 

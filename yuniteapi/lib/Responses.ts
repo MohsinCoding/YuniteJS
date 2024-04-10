@@ -91,6 +91,10 @@ export interface Tournament {
     }>
 }
 
+export interface SingleTournamentResponseData extends AxiosResponse {
+    data: Tournament
+}
+
 export interface GetTournamentsResponseData extends AxiosResponse {
     data: Array<Tournament>
 }
