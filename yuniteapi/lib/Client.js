@@ -229,20 +229,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/acss
      */
     async getTicketStats(guildId, from, to) {
-        if (from !== undefined || to !== undefined) {
-            if (typeof from !== 'number' || typeof to !== 'number') {
-                // throw new Error("Type of from and to values must be of type number (unix timestamp). \nFor more info visit https://yunite.xyz/docs/developers/acss")
-            }
-        }
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/guild/${guildId}/acss/stats${from !== undefined ? `?from=${from}` : ''}${to !== undefined ? `?to=${to}` : ''}`, {
-            headers: {
-                "Y-Api-Token": apiKey,
-                "Accept-Encoding": "gzip,deflate,compress"
-            },
-
-        })
-        return response.data
+        return this.makeRequest('get', `/guild/${guildId}/acss/stats${from !== undefined ? `?from=${from}` : ''}${to !== undefined ? `?to=${to}` : ''}`);
     }
 
     /**
@@ -250,15 +237,7 @@ class YuniteApi {
      * Docs: https://yunite.xyz/docs/developers/authentication
      */
     async getWsToken() {
-        const apiKey = (Object.values(this.config).join(''))
-        const response = await axios.get(`${this.baseUrl}/websocket-token`, {
-            headers: {
-                "Y-Api-Token": apiKey,
-                "Accept-Encoding": "gzip,deflate,compress"
-            },
-
-        })
-        return response.data
+        return this.makeRequest('get', `/websocket-token`);
     }
 }
 exports.default = YuniteApi;
