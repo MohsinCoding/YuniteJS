@@ -67,6 +67,9 @@ class YuniteApi {
             const resetIn = parseInt(response.headers['y-ratelimit-resetin'], 10) * 1000;
             const permits = parseInt(response.headers['y-ratelimit-permits'], 10);
             const endpoint = this.extractEndpointFromURL(response.config.url);
+            if (!response.headers['y-ratelimit-bucket']) {
+                return response
+            }
             this.rateLimitManager.updateRateLimit(endpoint, resetIn);
             if (permits > 0) {
                 this.rateLimitManager.updateConcurrency(endpoint, permits);
