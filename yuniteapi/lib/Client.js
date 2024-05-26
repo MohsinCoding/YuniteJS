@@ -81,6 +81,7 @@ class YuniteApi {
                 const resetIn = parseInt(error.response.headers['y-ratelimit-resetin'], 10) * 1000;
                 const endpoint = this.extractEndpointFromURL(error.config.url);
                 if (!this.suppressLogs) {
+                    console.log(error.response)
                     console.log(`[YUNITEAPI]: Ratelimit hit for endpoint: ${endpoint}, automatically retrying after ${resetIn/1000000} second(s)`);
                 }
                 await new Promise(resolve => setTimeout(resolve, resetIn / 1000));
