@@ -79,6 +79,9 @@ class YuniteApi {
 
             if (error.response && error.response.status === 429) {
                 const resetIn = parseInt(error.response.headers['y-ratelimit-resetin'], 10) * 1000;
+                if (!resetIn) {
+                    return Promise.reject(error);
+                }
                 const endpoint = this.extractEndpointFromURL(error.config.url);
                 if (!this.suppressLogs) {
                     console.log(error.response)
